@@ -22,7 +22,7 @@ Language Models
 MUR reduces computation by over 50\% on average across three backbone models, while improving accuracy by 0.62–3.37\%.
 
 <p align="center">
-    <img src="./assets/intro.png" alt="scaling" width="400">
+    <img src="./assets/Intro.png" alt="scaling" width="400">
 </p>
 
 🚀 Quick Start
