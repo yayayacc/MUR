@@ -26,44 +26,20 @@ MUR reduces computation by over 50\% on average across three backbone models, wh
 </p>
 
 🚀 Quick Start
-The code will be released soon!!!
 
-<!-- To use the MUR, we can try with the following command.
+To use MUR, we can try with the following command.
 
 Firstly, create the environment and install the requirements. This implementation is accelerated and supported by vllm.
 
 ```bash
 # env
-conda create -n phi-decoding python==3.10
-conda activate phi-decoding
+conda create -n mur python==3.11.9
+conda activate mur
 pip install -r requirements.txt
 ```
 
-Next, simply run the following command after the basic configuration:
-
-```bash
-python phi_decoding.py
-```
-
-P.S. If you find error in running phi_decoding.py, please refer to "origin" branch. Because we are refactoring the orignal version to provide a PyPi, so temporary bug may appear in this branch. We are so sorry for that inconvenience.
-
-## 🔧 PyPi Package
-
-We are working on the PyPi Package of $\phi$-Decoding. Stay tuned for the updates ! You can try it with:
-
-```bash
-pip install phi-decoding
-```
+Next, simply run different python files.
 
 ## Citation
 
-If you find it helpful, please kindly cite the paper.
-
-```
-@article{xu2025phi,
-  title={$\phi$-Decoding: Adaptive Foresight Sampling for Balanced Inference-Time Exploration and Exploitation},
-  author={Xu, Fangzhi and Yan, Hang and Ma, Chang and Zhao, Haiteng and Liu, Jun and Lin, Qika and Wu, Zhiyong},
-  journal={arXiv preprint arXiv:2503.13288},
-  year={2025}
-}
-``` -->
+If you find it helpful, please kindly cite this repo.
