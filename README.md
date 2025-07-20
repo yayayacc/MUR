@@ -38,7 +38,11 @@ conda activate mur
 pip install -r requirements.txt
 ```
 
-Next, simply run different python files.
+Next, simply run different python files: python [TTS setting]-[vanilla|mur].py
+
+Finally, run eval files. To be specific, please eval gpqa_diamond dataset using eval/eval_gpqa_cot.py. Adiitionaly, use eval/math_verifier.py to verify math datasets.
+
+Feel free to contact with me if you have any questions ~~~
 
 ## Citation
 
