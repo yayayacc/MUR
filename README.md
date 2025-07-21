@@ -25,7 +25,7 @@ MUR reduces computation by over 50\% on average across three backbone models, wh
     <img src="./assets/Intro.png" alt="scaling" width="400">
 </p>
 
-🚀 Quick Start
+## 🚀 Quick Start
 
 To use MUR, we can try with the following command.
 
