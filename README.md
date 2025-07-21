@@ -10,7 +10,7 @@ Language Models
   
 </p>
 
-<p align="center"> Repo for MUR: Momentum Uncertainty Guided Reasoning For Large Language Models</a>"</p>
+<p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning For Large Language Models</a>"</p>
 <!-- "<a href="https://arxiv.org/abs/2503.13288" target="_blank"> -->
 
 ## 🔥 News
