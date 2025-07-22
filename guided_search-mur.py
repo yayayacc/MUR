@@ -1,4 +1,4 @@
-# 基于v3，加入修正项
+
 import os
 import json
 import numpy as np
