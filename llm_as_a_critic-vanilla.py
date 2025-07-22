@@ -1,4 +1,4 @@
-# 第一版，使用momentum enrotypy，然后在特殊地方让critic介入
+
 import os
 import json
 import numpy as np
