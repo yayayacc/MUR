@@ -47,10 +47,11 @@ Feel free to contact with me if you have any questions ~~~
 ## Citation
 
 If you find it helpful, please kindly cite our paper.
-
-@article{xu2025phi,
+```
+@article{yan2025mur,
   title={MUR: Momentum Uncertainty guided Reasoning for Large Language Models},
   author={Hang Yan, Fangzhi Xu, Rongman Xu, Yifei Li, Jian Zhang, Haoran Luo, Xiaobao Wu, Luu Anh Tuan, Haiteng Zhao, Qika Lin, Jun Liu},
   journal={arXiv preprint arXiv:2507.14958},
   year={2025}
 }
+```
