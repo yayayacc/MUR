@@ -131,7 +131,7 @@ def main(args):
                 current_traj.append(f"Step{step_idx}: {output.text.strip()}")
 
                 # Trigger candidate search if low confidence
-                if np.exp(cur_signal) < np.exp(momentum_uncertainty) * args.scaling_rate and step_idx > 0:
+                if True:
                     input_text = build_policy_input(
                         policy_tokenizer, question, current_traj[:-1], step_idx, policy_stop_token)
                     sampling_params = SamplingParams(max_tokens=2048, temperature=0.6, stop=[
