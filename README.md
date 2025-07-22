@@ -5,16 +5,16 @@ Language Models
 
 <p align="center">
   <!-- <a href="https://github.com/yayayacc/MUR/"><b>[🌐 PyPi Package]</b></a> • -->
-  <!-- <a href="https://arxiv.org/abs/2503.13288"><b>[📜 Paper]</b></a> • -->
+  <a href="https://arxiv.org/abs/2507.14958"><b>[📜 Paper]</b></a> •
   <a href="https://github.com/yayayacc/MUR/"><b>[🐱 GitHub]</b></a>
   
 </p>
 
 <p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning For Large Language Models</a>"</p>
-<!-- "<a href="https://arxiv.org/abs/2503.13288" target="_blank"> -->
+"<a href="https://arxiv.org/abs/2507.14958" target="_blank">
 
 ## 🔥 News
-
+- [2025/07/22] 🔥🔥🔥 Our paper is released !!!
 - [2025/07/19] 🔥🔥🔥 Our github repo is released!!!
 
 ## 📖 Results
@@ -46,4 +46,11 @@ Feel free to contact with me if you have any questions ~~~
 
 ## Citation
 
-If you find it helpful, please kindly cite this repo.
+If you find it helpful, please kindly cite our paper.
+
+@article{xu2025phi,
+  title={MUR: Momentum Uncertainty guided Reasoning for Large Language Models},
+  author={Hang Yan, Fangzhi Xu, Rongman Xu, Yifei Li, Jian Zhang, Haoran Luo, Xiaobao Wu, Luu Anh Tuan, Haiteng Zhao, Qika Lin, Jun Liu},
+  journal={arXiv preprint arXiv:2507.14958},
+  year={2025}
+}
