@@ -42,7 +42,7 @@ pip install -r requirements.txt
 Next, simply run different python files: 
 
 ```python
-python [TTS setting]-[vanilla|mur].py
+python [TTS setting]-[per_step_scale|mur].py
 ```
 
 Finally, run eval files. To be specific, please eval gpqa_diamond dataset using ``eval/eval_gpqa_cot.py``. Adiitionaly, use ``eval/math_verifier.py`` to verify math datasets.
