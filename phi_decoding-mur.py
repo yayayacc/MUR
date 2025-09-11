@@ -2,209 +2,269 @@ import os
 import json
 import numpy as np
 import argparse
-import time
 from vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
+import time
+from utils.generate_prompts import ciritique_generation, ciritique_last_generation, ciritique_last_generation_math
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_path', type=str, default='data/math_500_test.json')
+parser.add_argument('--gpus', type=int, default=1)
+parser.add_argument('--momentum_rate', type=float, default=0.9)
+parser.add_argument('--max_steps', type=int, default=20)
+parser.add_argument('--file_name', type=str, default='V3_test.json')
+parser.add_argument('--candidate_num', type=int, default=4)
+parser.add_argument('--verify_num', type=int, default=1,
+                    help='for each candidate, verify how many times')
+parser.add_argument('--scaling_rate', type=float, default=0.9,
+                    help='scaling rate for momentum uncertainty')
+parser.add_argument('--aim_gpu', type=int, default=1, help='aim for gpu')
+parser.add_argument('--policy', type=str, default='Qwen3-4B-FP8')
+parser.add_argument('--critic', type=str, default='genprm1.5B')
+parser.add_argument('--cluster_num', type=int, default=2)
+args = parser.parse_args()
+policy_dir = args.policy
+critic_dir = args.critic
+
+os.environ['CUDA_VISIBLE_DEVICES'] = str(args.aim_gpu)
+policy_model = LLM(model=policy_dir, tensor_parallel_size=1,
+                   max_model_len=8096*2, trust_remote_code=True, gpu_memory_utilization=0.9)
+policy_tokenizer = AutoTokenizer.from_pretrained(
+    policy_dir, trust_remote_code=True)
+
 
 def softmax(x):
-    x = np.array(x)
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum()
+    return np.exp(x) / np.sum(np.exp(x))
 
 
-def setup_model(model_path, gpu_memory_utilization=0.9):
-    model = LLM(model=model_path, tensor_parallel_size=1, max_model_len=8096*2,
-                trust_remote_code=True, gpu_memory_utilization=gpu_memory_utilization)
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_path, trust_remote_code=True)
-    if not tokenizer.pad_token:
-        tokenizer.pad_token = tokenizer.eos_token
-    return model, tokenizer, tokenizer.eos_token
+if not policy_tokenizer.pad_token:
+    policy_tokenizer.pad_token = policy_tokenizer.eos_token
+policy_stop_token = policy_tokenizer.eos_token
 
+if 'math' in args.data_path.lower() or 'aime' in args.data_path.lower():
+    system_prompt = 'You are a helpful math assistant. '
+elif 'reclor' in args.data_path.lower() or 'gpqa' in args.data_path.lower() or 'logiqa' in args.data_path.lower():
+    system_prompt = 'You are a helpful assistant. Please answer "A", "B", "C", or "D".'
+elif 'strategyqa' in args.data_path.lower():
+    system_prompt = 'You are a helpful assistant. Please answer "Yes" or "No".'
 
-def get_system_prompt(data_path):
-    path = data_path.lower()
-    if any(x in path for x in ['math', 'aime']):
-        return 'You are a helpful math assistant.'
-    elif any(x in path for x in ['reclor', 'gpqa', 'logiqa']):
-        return 'You are a helpful assistant. Please answer "A", "B", "C", or "D".'
-    elif 'strategyqa' in path:
-        return 'You are a helpful assistant. Please answer "Yes" or "No".'
-    return ''
+DATA_PATH = args.data_path
+with open(DATA_PATH, encoding='utf-8') as file:
+    test_data = json.load(file)
+# test_data = test_data[:100]
+all_res = []
+start_time = time.time()
+all_policy_output_tokens = 0
+all_critic_output_tokens = 0
+for test_data_idx in range(len(test_data)):
+    print(f"Processing {test_data_idx} / {len(test_data)}")
+    tem_test_data = test_data[test_data_idx]
+    momentum_uncertainty = 0
+    current_traj = []
+    max_steps = args.max_steps
+    get_answer = False
+    question = tem_test_data['input']
+    for step_idx in range(max_steps):
+        try:
+            question = tem_test_data['input']
 
+            policy_inputs = [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': 'Q: ' + question +
+                    "\nAlways end your solution with the phrase 'the answer is' followed by your final answer. Start your solution with 'Step{step_idx}:' " + '\n'},
+            ]
 
-def build_prompt(tokenizer, question, traj, step_idx, stop_token):
-    chat = [{'role': 'user', 'content': f"Q: {question}\nAlways end your solution with the phrase 'the answer is' followed by your final answer. Start your solution with 'Step{step_idx}:'\n"}]
-    prompt = tokenizer.apply_chat_template(
-        chat, tokenize=False, enable_thinking=False, add_generation_prompt=True)
-    prompt = prompt.replace(stop_token, "").strip()
-    if step_idx > 0:
-        prompt += '\n' + '\n'.join(traj) + f'\nStep{step_idx}:'
-    else:
-        prompt += '\nStep0:'
-    return prompt
+            inputs = policy_tokenizer.apply_chat_template(
+                policy_inputs,
+                tokenize=False,
+                enable_thinking=False,
+                add_generation_prompt=True
+            )
+            if step_idx > 0:
+                inputs = inputs.replace(policy_stop_token, "").strip(
+                ) + '\n'.join(current_traj) + '\n' + f'Step{step_idx}:'
+            else:
+                inputs = inputs.replace(
+                    policy_stop_token, "").strip() + f'\nStep0:'
+            sampling_params = SamplingParams(
+                max_tokens=2048, temperature=0.6, stop=["Step"], logprobs=1)
 
+            outputs = policy_model.generate(inputs, sampling_params)
+            all_policy_output_tokens += len(outputs[0].outputs[0].token_ids)
+            output = outputs[0].outputs[0]
+            logp = output.cumulative_logprob
+            all_avglogp = logp/(len(output.token_ids)+1e-8)
+            cur_signal = all_avglogp
+            current_traj.append('Step' + str(step_idx) +
+                                ': ' + output.text.strip())
 
-def foresight_rerank(policy_model, tokenizer, base_prompt, step_candidates, current_traj, step_idx, cluster_num):
-    foresight_inputs = [base_prompt + '\n'.join(
-        current_traj[:-1]) + f'\nStep{step_idx}:' + cand for cand in step_candidates]
-    sampling_params = SamplingParams(
-        max_tokens=2048, temperature=0.6, stop=["Step"], logprobs=1)
-    foresight_outputs = policy_model.generate(
-        foresight_inputs, sampling_params)
+            if np.exp(cur_signal) < np.exp(momentum_uncertainty)*args.scaling_rate and output.text.strip() != '' and step_idx > 0:
+                print('sampling step_idx: ', step_idx)
+                cur_step_candidates = []
+                question = tem_test_data['input']
 
-    foresight_texts, foresight_scores = [], []
-    for output in foresight_outputs:
-        text = output.outputs[0].text.strip()
-        if text:
-            foresight_texts.append(text)
-            foresight_scores.append(
-                output.outputs[0].cumulative_logprob / (len(output.outputs[0].token_ids) + 1e-8))
+                policy_inputs = [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': 'Q: ' + question +
+                        "\nAlways end your solution with the phrase 'the answer is' followed by your final answer. Start your solution with 'Step{step_idx}:' " + '\n'},
+                ]
 
-    if not foresight_texts:
-        return None, None
+                inputs = policy_tokenizer.apply_chat_template(
+                    policy_inputs,
+                    tokenize=False,
+                    enable_thinking=False,
+                    add_generation_prompt=True
+                )
+                if step_idx > 0:
+                    inputs = inputs.replace(policy_stop_token, "").strip(
+                    ) + '\n'.join(current_traj[:-1]) + '\n' + f'Step{step_idx}:'
+                else:
+                    inputs = inputs.replace(
+                        policy_stop_token, "").strip() + f'\nStep0:'
+                sampling_params = SamplingParams(max_tokens=2048, temperature=0.6, stop=[
+                                                 "Step"], logprobs=1, n=args.candidate_num)
 
-    try:
-        X = TfidfVectorizer().fit_transform(foresight_texts)
-        kmeans = KMeans(n_clusters=cluster_num, n_init='auto').fit(X)
-        labels = kmeans.labels_
+                outputs = policy_model.generate(inputs, sampling_params)
+                all_cumulative_logp = []
+                for cur_output in outputs[0].outputs:
+                    cur_step_candidates.append(cur_output.text.strip())
+                    all_cumulative_logp.append(
+                        cur_output.cumulative_logprob/(len(cur_output.token_ids)+1e-8))
+                    all_policy_output_tokens += len(cur_output.token_ids)
 
-        cluster_sizes = [list(labels).count(i) for i in labels]
-        cluster_probs = softmax(cluster_sizes)
-        foresight_probs = softmax(foresight_scores)
-        combined_probs = [(foresight_probs[i] + cluster_probs[i]) /
-                          2 for i in range(len(foresight_scores))]
+                foresight_inputs = []
+                for forsight_idx in range(len(all_cumulative_logp)):
+                    foresight_input = inputs + \
+                        '\n'.join(
+                            current_traj[:-1]) + '\n' + f'\nStep{step_idx}:' + cur_step_candidates[forsight_idx]
+                    foresight_inputs.append(foresight_input)
+                sampling_params = SamplingParams(
+                    max_tokens=2048, temperature=0.6, stop=["Step"], logprobs=1)
+                foresight_outputs = policy_model.generate(
+                    foresight_inputs, sampling_params)
 
-        best_idx = np.random.choice(
-            range(len(foresight_texts)), p=combined_probs)
-        return best_idx, foresight_texts[best_idx]
-    except Exception as e:
-        print("Clustering failed:", e)
-        fallback_probs = softmax(foresight_scores)
-        best_idx = np.random.choice(
-            range(len(foresight_scores)), p=fallback_probs)
-        return best_idx, foresight_texts[best_idx]
+                foresight_cumulative_logp = []
+                foresight_text = []
+                for foresight_idx in range(len(all_cumulative_logp)):
+                    foresight_cumulative_logp.append(foresight_outputs[foresight_idx].outputs[0].cumulative_logprob/(
+                        len(foresight_outputs[foresight_idx].outputs[0].token_ids)+1e-8))
+                    foresight_text.append(
+                        foresight_outputs[foresight_idx].outputs[0].text.strip())
 
+                renewed_foresight_text = []
+                renewed_foresight_cumulative_logp = []
+                for text, cumulative_logp in zip(foresight_text, foresight_cumulative_logp):
+                    if text != '':
+                        renewed_foresight_text.append(text)
+                        renewed_foresight_cumulative_logp.append(
+                            cumulative_logp)
+                foresight_cumulative_logp = renewed_foresight_cumulative_logp
+                foresight_text = renewed_foresight_text
+                if len(foresight_text) == 0:
+                    print("foresight_text is empty at step: ", step_idx)
+                    continue
 
-def main(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.aim_gpu)
+                try:
+                    vectorizer = TfidfVectorizer()
+                    X = vectorizer.fit_transform(foresight_text)
+                    k = args.cluster_num
+                    kmeans = KMeans(n_clusters=k)
+                    kmeans.fit(X)
+                    cluster_labels = kmeans.labels_
+                    cluster_list = [[] for _ in range(k)]
+                    for aidx, cluster_label in enumerate(cluster_labels):
+                        cluster_list[cluster_label].append(aidx)
+                    cluster_list = [sorted(cluster)
+                                    for cluster in cluster_list]
 
-    policy_model, policy_tokenizer, policy_stop_token = setup_model(
-        args.policy)
-    system_prompt = get_system_prompt(args.data_path)
+                    cluster_len_ratio = [
+                        len(cluster)/len(foresight_text) for cluster in cluster_list]
+                    per_sample_cluster_len_ratio = [
+                        cluster_len_ratio[cluster_labels[ddi]] for ddi in range(len(foresight_text))]
+                    cluster_weights = softmax(per_sample_cluster_len_ratio)
 
-    with open(args.data_path, encoding='utf-8') as f:
-        test_data = json.load(f)
+                    foresight_cumulative_logp = softmax(
+                        foresight_cumulative_logp)
 
-    all_res = []
-    total_policy_tokens = 0
-    start_time = time.time()
-
-    for idx, item in enumerate(test_data):
-        print(f"Processing {idx + 1} / {len(test_data)}")
-        question = item['input']
-        current_traj = []
-        momentum_uncertainty = 0
-        get_answer = False
-
-        for step_idx in range(args.max_steps):
-            try:
-                prompt = build_prompt(
-                    policy_tokenizer, question, current_traj, step_idx, policy_stop_token)
-                outputs = policy_model.generate(prompt, SamplingParams(
-                    max_tokens=2048, temperature=0.6, stop=["Step"], logprobs=1))
-                output = outputs[0].outputs[0]
-                total_policy_tokens += len(output.token_ids)
-
-                step_text = output.text.strip()
-                cur_logp = output.cumulative_logprob / \
-                    (len(output.token_ids) + 1e-8)
-                current_traj.append(f"Step{step_idx}: {step_text}")
-
-                if "the answer is" in ''.join(current_traj).lower():
-                    get_answer = True
-                    break
-
-                if np.exp(cur_logp) < np.exp(momentum_uncertainty) * args.scaling_rate and step_idx > 0 and step_text:
-                    print("Sampling due to uncertainty at step:", step_idx)
-
-                    # Generate step candidates
-                    base_prompt = build_prompt(
-                        policy_tokenizer, question, current_traj[:-1], step_idx, policy_stop_token)
-                    outputs = policy_model.generate(base_prompt, SamplingParams(
-                        max_tokens=2048, temperature=0.6, stop=["Step"], logprobs=1, n=args.candidate_num))
-                    candidates = [o.text.strip() for o in outputs[0].outputs]
-                    all_logps = [
-                        o.cumulative_logprob / (len(o.token_ids) + 1e-8) for o in outputs[0].outputs]
-                    total_policy_tokens += sum(len(o.token_ids)
-                                               for o in outputs[0].outputs)
-
-                    best_idx, best_text = foresight_rerank(
-                        policy_model, policy_tokenizer, base_prompt, candidates, current_traj, step_idx, args.cluster_num)
-
-                    if best_idx is not None:
-                        current_traj[-1] = f"Step{step_idx}: {candidates[best_idx]}"
-                        cur_logp = all_logps[best_idx]
+                    weighted_foresight_cumulative_logp = [
+                        (foresight_cumulative_logp[i] + cluster_weights[i])/2 for i in range(len(foresight_text))]
+                    best_cluster_idx = np.random.choice(
+                        range(len(foresight_text)), p=weighted_foresight_cumulative_logp)
+                    best_cluster_text = foresight_text[best_cluster_idx]
+                    print('success foresight at step: ', step_idx, '  ', )
+                except:
+                    if len(foresight_text) != 0:
+                        best_candidate_idx = np.random.choice(range(len(foresight_text)), p=np.exp(
+                            foresight_cumulative_logp)/sum(np.exp(foresight_cumulative_logp)))
+                        print("fail foresight at step: ", step_idx)
                     else:
-                        print("Foresight fallback triggered.")
+                        best_candidate_idx = np.random.choice(range(len(all_cumulative_logp)), p=np.exp(
+                            all_cumulative_logp)/sum(np.exp(all_cumulative_logp)))
+                        print(
+                            "fail foresight at step and foresight_text is empty: ", step_idx)
 
-                momentum_uncertainty = args.momentum_rate * \
-                    momentum_uncertainty + (1 - args.momentum_rate) * cur_logp
+                best_candidate = cur_step_candidates[best_candidate_idx]
+                cur_signal = all_cumulative_logp[best_candidate_idx]
+                current_traj[-1] = best_candidate
 
-            except Exception as e:
-                print(f"Error at step {step_idx}: {e}")
-                continue
+            momentum_uncertainty = args.momentum_rate * \
+                momentum_uncertainty + (1 - args.momentum_rate) * cur_signal
 
-        # Final fallback if no answer found
-        if not get_answer:
-            try:
-                fallback_prompt = build_prompt(
-                    policy_tokenizer, question, current_traj, step_idx, policy_stop_token)
-                outputs = policy_model.generate(fallback_prompt, SamplingParams(
-                    max_tokens=2048, temperature=0.6, logprobs=1))
-                output = outputs[0].outputs[0]
-                current_traj.append(output.text.strip())
-                total_policy_tokens += len(output.token_ids)
-            except Exception as e:
-                print("Final fallback failed:", e)
+            if "the answer is" in ''.join(current_traj).lower():
+                get_answer = True
+                break
+        except:
+            pass
+    if not get_answer:
+        try:
+            question = tem_test_data['input']
+            policy_inputs = [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': 'Q: ' + question +
+                    "\nAlways end your solution with the phrase 'the answer is' followed by your final answer. Start your solution with 'Step{step_idx}:' " + '\n'},
+            ]
 
-        all_res.append({
-            'question': question,
-            'ground_truth': item['target'],
-            'current_traj': '\n'.join(current_traj),
-            'final_answer': current_traj[-1] if current_traj else 'No answer'
-        })
+            inputs = policy_tokenizer.apply_chat_template(
+                policy_inputs,
+                tokenize=False,
+                enable_thinking=False,
+                add_generation_prompt=True
+            )
 
-        with open(f"res/{args.file_name}.json", 'w') as f:
-            json.dump(all_res, f, indent=4)
+            inputs = inputs.replace(policy_stop_token, "").strip(
+            ) + '\n'.join(current_traj) + '\n' + f'\nStep{step_idx}:'
+            sampling_params = SamplingParams(
+                max_tokens=8096, temperature=0.6, logprobs=1)
 
-    total_time = time.time() - start_time
-    print(f"Total time taken: {total_time:.2f} seconds")
+            outputs = policy_model.generate(inputs, sampling_params)
+            all_policy_output_tokens += len(outputs[0].outputs[0].token_ids)
+            output = outputs[0].outputs[0]
 
-    with open(f"res/time/{args.file_name}.txt", 'w') as f:
-        f.write(f"\n{args.file_name} time: {total_time:.2f} seconds\n")
-        f.write(f"Total policy output tokens: {total_policy_tokens}\n")
+            current_traj.append(output.text.strip())
+        except:
+            pass
+
+    tem_res = {
+        'question': question,
+        'ground_truth': tem_test_data['target'],
+        'current_traj': '\n'.join(current_traj),
+        'final_answer': current_traj[-1] if current_traj else 'No answer'
+    }
+    all_res.append(tem_res)
+    with open('res/' + args.file_name + '.json', 'w') as f:
+        json.dump(all_res, f, indent=4)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str,
-                        default='data/math_500_test.json')
-    parser.add_argument('--gpus', type=int, default=1)
-    parser.add_argument('--momentum_rate', type=float, default=0.9)
-    parser.add_argument('--max_steps', type=int, default=20)
-    parser.add_argument('--file_name', type=str,
-                        default='phi_decoding-mur.json')
-    parser.add_argument('--candidate_num', type=int, default=4)
-    parser.add_argument('--verify_num', type=int, default=1)
-    parser.add_argument('--scaling_rate', type=float, default=0.9)
-    parser.add_argument('--aim_gpu', type=int, default=1)
-    parser.add_argument('--policy', type=str, default='Qwen3-4B-FP8')
-    # hyperparameter for phi-decoding
-    parser.add_argument('--cluster_num', type=int, default=2)
-    args = parser.parse_args()
+end_time = time.time()
+print(f"Total time taken: {end_time - start_time} seconds")
 
-    main(args)
+
+with open('res/time/' + args.file_name + '.txt', 'w') as f:
+    f.write('\n\n' + args.file_name + '  time: ' +
+            str(end_time - start_time) + '\n\n')
+    f.write('all_policy_output_tokens: ' +
+            str(all_policy_output_tokens) + '\n')
+    f.write('all_critic_output_tokens: ' +
+            str(all_critic_output_tokens) + '\n')
