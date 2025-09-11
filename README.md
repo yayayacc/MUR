@@ -47,6 +47,8 @@ python [TTS setting]-[per_step_scale|mur].py
 
 Finally, run eval files. To be specific, please eval gpqa_diamond dataset using ``eval/eval_gpqa_cot.py``. Adiitionaly, use ``eval/math_verifier.py`` to verify math datasets.
 
+We are resturing our code to make it more readable, so it may have some trouble in main branch(which we are restrctruing). If you find sth wrong in the main branch, you can refer to the code in the master branch(which is the original code). Thanks!
+
 Feel free to contact with me if you have any questions ~~~
 
 ## Citation
