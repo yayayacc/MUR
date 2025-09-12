@@ -47,8 +47,10 @@ if not critic_tokenizer.pad_token:
     critic_tokenizer.pad_token = critic_tokenizer.eos_token
 critic_stop_token = critic_tokenizer.eos_token
 
-if 'math' in args.data_path.lower() or 'aime' in args.data_path.lower():
-    system_prompt = 'You are a helpful math assistant.'
+if 'math' in data_path.lower():
+    return ''
+elif 'aime' in data_path.lower():
+    return 'You are a helpful math assistant. '
 elif 'amc' in args.data_path.lower():
     system_prompt = 'You are a helpful math assistant.'
 elif 'reclor' in args.data_path.lower() or 'gpqa' in args.data_path.lower() or 'logiqa' in args.data_path.lower():
