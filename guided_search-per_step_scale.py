@@ -20,7 +20,9 @@ def load_model_and_tokenizer(model_dir, gpu_memory_utilization=0.6):
 
 
 def get_system_prompt(data_path):
-    if 'math' in data_path.lower() or 'aime' in data_path.lower():
+    if 'math' in data_path.lower():
+        return ''
+    elif 'aime' in data_path.lower():
         return 'You are a helpful math assistant. '
     elif 'reclor' in data_path.lower() or 'gpqa' in data_path.lower() or 'logiqa' in data_path.lower():
         return 'You are a helpful assistant. Here is a question and four candidate answers. You need to reason step by step and choose the most likely answer from the four candidate answers. Answer "A", "B", "C", or "D".'
