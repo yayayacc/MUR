@@ -128,7 +128,7 @@ def main(args):
                     get_answer = True
                     break
 
-                if np.exp(cur_logp) < np.exp(momentum_uncertainty) * args.scaling_rate and step_idx > 0 and step_text:
+                if True:
                     print("Sampling due to uncertainty at step:", step_idx)
 
                     # Generate step candidates
