@@ -104,7 +104,7 @@ def run(args):
                     break
 
                 # Trigger critic if uncertainty exceeds threshold
-                if np.exp(avg_logp) < np.exp(momentum_uncertainty) * args.scaling_rate and step > 0 and step_text:
+                if True:
                     print(f"Critic invoked for question {idx}, step {step}")
                     if 'math' in args.data_path.lower() or 'aime' in args.data_path.lower():
                         prompt_dict = ciritique_last_generation_math(
