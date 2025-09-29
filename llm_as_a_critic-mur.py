@@ -201,6 +201,9 @@ for test_data_idx in range(len(test_data)):
 
         momentum_uncertainty = args.momentum_rate * \
             momentum_uncertainty + (1 - args.momentum_rate) * cur_signal
+        if "the answer is" in ''.join(current_traj).lower():
+                get_answer = True
+                break
 
     if not get_answer:
         try:
