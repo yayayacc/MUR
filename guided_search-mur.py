@@ -1,3 +1,4 @@
+
 import os
 import json
 import numpy as np
@@ -26,7 +27,7 @@ args = parser.parse_args()
 policy_dir = args.policy
 critic_dir = args.critic
 
-os.environ['CUDA_VISIBLE_DEVICES'] = str(args.aim_gpu)
+# os.environ['CUDA_VISIBLE_DEVICES'] = str(args.aim_gpu)
 policy_model = LLM(model=policy_dir, tensor_parallel_size=1,
                    max_model_len=8096*2, trust_remote_code=True, gpu_memory_utilization=0.4)
 critic_model = LLM(model=critic_dir, tensor_parallel_size=1,
@@ -102,6 +103,10 @@ for test_data_idx in range(len(test_data)):
             cur_signal = all_avglogp
             current_traj.append('Step' + str(step_idx) +
                                 ': ' + output.text.strip())
+            if step_idx > 0:
+                calibrated_momentum_uncertainty = momentum_uncertainty / (1 - math.pow(args.momentum_rate, step_idx))
+            else:
+                calibrated_momentum_uncertainty = momentum_uncertainty
 
             if np.exp(cur_signal) < np.exp(momentum_uncertainty)*args.scaling_rate and output.text.strip() != '' and step_idx > 0:
                 cur_step_candidates = []
