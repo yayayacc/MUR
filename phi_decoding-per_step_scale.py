@@ -27,8 +27,10 @@ def setup_model(model_path, gpu_memory_utilization=0.9):
 
 def get_system_prompt(data_path):
     path = data_path.lower()
-    if any(x in path for x in ['math', 'aime']):
+    if any(x in path for x in ['aime']):
         return 'You are a helpful math assistant.'
+    elif any(x in path for x in ['math']):
+        return ''
     elif any(x in path for x in ['reclor', 'gpqa', 'logiqa']):
         return 'You are a helpful assistant. Please answer "A", "B", "C", or "D".'
     elif 'strategyqa' in path:
