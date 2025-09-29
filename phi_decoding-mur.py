@@ -105,6 +105,9 @@ for test_data_idx in range(len(test_data)):
                 calibrated_momentum_uncertainty = momentum_uncertainty / (1 - math.pow(args.momentum_rate, step_idx))
             else:
                 calibrated_momentum_uncertainty = momentum_uncertainty
+            if "the answer is" in ''.join(current_traj).lower():
+                get_answer = True
+                break
 
             if np.exp(cur_signal) < np.exp(momentum_uncertainty)*args.scaling_rate and output.text.strip() != '' and step_idx > 0:
                 print('sampling step_idx: ', step_idx)
