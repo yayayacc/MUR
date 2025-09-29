@@ -22,8 +22,10 @@ def setup_model_and_tokenizer(model_path, gpu_mem):
 
 def get_system_prompt(data_path):
     path = data_path.lower()
-    if any(x in path for x in ['math', 'aime', 'amc']):
+    if any(x in path for x in ['aime']):
         return 'You are a helpful math assistant.'
+    elif any(x in path for x in ['math']):
+        return ''
     elif any(x in path for x in ['reclor', 'gpqa', 'logiqa']):
         return 'You are a helpful assistant. Here is a question and four candidate answers. You need to reason step by step and choose the most likely answer from the four candidate answers. Answer "A", "B", "C", or "D".'
     elif 'strategyqa' in path:
