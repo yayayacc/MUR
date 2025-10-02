@@ -103,10 +103,6 @@ for test_data_idx in range(len(test_data)):
             cur_signal = all_avglogp
             current_traj.append('Step' + str(step_idx) +
                                 ': ' + output.text.strip())
-            if step_idx > 0:
-                calibrated_momentum_uncertainty = momentum_uncertainty / (1 - math.pow(args.momentum_rate, step_idx))
-            else:
-                calibrated_momentum_uncertainty = momentum_uncertainty
             if "the answer is" in ''.join(current_traj).lower():
                 get_answer = True
                 break
