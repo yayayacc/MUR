@@ -129,7 +129,7 @@ def main(args):
                 if "the answer is" in ''.join(current_traj).lower():
                     get_answer = True
                     break
-
+                # We should notice that the implementation of momentum_uncertainty and cur_signal is different from those in paper, but is equivalent in math.
                 if np.exp(cur_logp) < np.exp(momentum_uncertainty) * args.scaling_rate and step_idx > 0 and step_text:
                     print("Sampling due to uncertainty at step:", step_idx)
 
