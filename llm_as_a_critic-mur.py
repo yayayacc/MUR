@@ -110,7 +110,7 @@ for test_data_idx in range(len(test_data)):
             if "the answer is" in ''.join(current_traj).lower():
                 get_answer = True
                 break
-
+            # We should notice that the momentum_uncertainty and cur_signal is different from those in paper, but is equivalent in math.
             if np.exp(cur_signal) < np.exp(momentum_uncertainty)*args.scaling_rate and output.text.strip() != '' and step_idx > 0:
                 print('cirtic question ', test_data_idx, '  step_idx', step_idx)
                 if 'math' in args.data_path.lower() or 'aime' in args.data_path.lower():
