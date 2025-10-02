@@ -107,6 +107,7 @@ for test_data_idx in range(len(test_data)):
                 get_answer = True
                 break
 
+            # We should notice that the momentum_uncertainty and cur_signal is different from those in paper, but is equivalent in math.
             if np.exp(cur_signal) < np.exp(momentum_uncertainty)*args.scaling_rate and output.text.strip() != '' and step_idx > 0:
                 cur_step_candidates = []
                 cur_normalized_logp = []
