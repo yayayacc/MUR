@@ -132,7 +132,7 @@ def main(args):
                 cur_signal = avg_logp
                 current_traj.append(f"Step{step_idx}: {output.text.strip()}")
 
-                # Trigger candidate search if low confidence
+                # We should notice that the implementation of momentum_uncertainty and cur_signal is different from those in paper, but is equivalent in math.
                 if np.exp(cur_signal) < np.exp(momentum_uncertainty) * args.scaling_rate and step_idx > 0:
                     input_text = build_policy_input(
                         policy_tokenizer, question, current_traj[:-1], step_idx, policy_stop_token)
