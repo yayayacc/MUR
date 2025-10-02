@@ -105,7 +105,7 @@ def run(args):
                     get_answer = True
                     break
 
-                # Trigger critic if uncertainty exceeds threshold
+                # We should notice that the implementation of momentum_uncertainty and cur_signal is different from those in paper, but is equivalent in math.
                 if np.exp(avg_logp) < np.exp(momentum_uncertainty) * args.scaling_rate and step > 0 and step_text:
                     print(f"Critic invoked for question {idx}, step {step}")
                     if 'math' in args.data_path.lower() or 'aime' in args.data_path.lower():
