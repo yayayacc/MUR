@@ -1,6 +1,5 @@
 <h1 align="center">
-MUR: Momentum Uncertainty Guided Reasoning For Large
-Language Models
+MUR: Momentum Uncertainty Guided Reasoning
 </h1>
 
 <p align="center">
@@ -10,7 +9,7 @@ Language Models
   
 </p>
 
-<p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning For Large Language Models</a>"</p>
+<p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning</a>"</p>
 <a href="https://arxiv.org/abs/2507.14958" target="_blank">
 
 ## 🔥 News
@@ -49,14 +48,4 @@ Finally, run eval files. To be specific, please eval gpqa_diamond dataset using 
 
 Feel free to contact with me if you have any questions ~~~
 
-## Citation
-
-If you find it helpful, please kindly cite our paper.
-```
-@article{yan2025mur,
-  title={MUR: Momentum Uncertainty guided Reasoning for Large Language Models},
-  author={Hang Yan, Fangzhi Xu, Rongman Xu, Yifei Li, Jian Zhang, Haoran Luo, Xiaobao Wu, Luu Anh Tuan, Haiteng Zhao, Qika Lin, Jun Liu},
-  journal={arXiv preprint arXiv:2507.14958},
-  year={2025}
-}
 ```
