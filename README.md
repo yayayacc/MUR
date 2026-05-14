@@ -1,5 +1,5 @@
 <h1 align="center">
-MUR: Momentum Uncertainty Guided Reasoning
+MUR: Momentum Uncertainty Guided Reasoning for Large Language Models
 </h1>
 
 <p align="center">
@@ -9,7 +9,7 @@ MUR: Momentum Uncertainty Guided Reasoning
   
 </p>
 
-<p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning</a>"</p>
+<p align="center"> Repo for "MUR: Momentum Uncertainty Guided Reasoning for Large Language Models</a>"</p>
 <a href="https://arxiv.org/abs/2507.14958" target="_blank">
 
 ## 🔥 News
