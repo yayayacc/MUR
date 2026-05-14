@@ -48,4 +48,3 @@ Finally, run eval files. To be specific, please eval gpqa_diamond dataset using 
 
 Feel free to contact with me if you have any questions ~~~
 
-```
